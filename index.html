@@ -399,7 +399,7 @@ function renderDashCharts(){
     dk('tr');const mo=getMo();
     const el1=document.getElementById('chTr');if(!el1)return;
     el1.parentElement.style.height='200px';
-    requestAnimationFrame(()=>{chI.tr=new Chart(el1,{type:'bar',data:{labels:mo.map(m=>m.l),datasets:[{label:'收入',data:md('income',mo),backgroundColor:'rgba(52,211,153,.7)',borderRadius:4},{label:'支出',data:md('expense',mo),backgroundColor:'rgba(248,113,113,.7)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#a0a0a8',usePointStyle:true,boxWidth:8,font:{size:10}}}},scales:{x:{ticks:{color:'#5c5c66',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#5c5c66',font:{size:9},callback:v=>'¥'+v},grid:{color:'rgba(42,42,52,.5)'}}}})})
+    requestAnimationFrame(()=>{chI.tr=new Chart(el1,{type:'bar',data:{labels:mo.map(m=>m.l),datasets:[{label:'收入',data:md('income',mo),backgroundColor:'rgba(52,211,153,.7)',borderRadius:4},{label:'支出',data:md('expense',mo),backgroundColor:'rgba(248,113,113,.7)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#a0a0a8',usePointStyle:true,boxWidth:8,font:{size:10}}}},scales:{x:{ticks:{color:'#5c5c66',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#5c5c66',font:{size:9},callback:v=>'¥'+v},grid:{color:'rgba(42,42,52,.5)'}}}}})})
   }catch(e){console.warn('趋势图加载失败',e);if(++_dashRetry<5)setTimeout(renderDashCharts,1000)}
   try{
     dk('ca');const now=new Date(),cm={};ioe(txs).filter(t=>{const d=new Date(t.date);return t.type==='expense'&&d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear()}).forEach(t=>{cm[t.category||'未分类']=(cm[t.category||'未分类']||0)+t.amount});
