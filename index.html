@@ -340,15 +340,6 @@ function init(){
   try{setupDrag()}catch(e){console.error('drag:',e)}
   try{setDefaultDate()}catch(e){console.error('date:',e)}
   setTimeout(()=>{try{if(typeof Chart!=='undefined'&&!chI.tr)renderDashCharts()}catch(e){console.error('chart:',e)}},2000);
-  // iOS debug banner
-  try{
-    const d=document.createElement('div');
-    d.style.cssText='position:fixed;top:0;left:0;right:0;background:#e8b931;color:#000;font:11px/1.4 monospace;z-index:99999;padding:4px 8px;display:none;word-break:break-all';
-    d.innerHTML='Chart:'+(typeof Chart)+' XLSX:'+(typeof XLSX)+' txs:'+txs.length;
-    document.body.appendChild(d);
-    window.onerror=function(m,s,l,c){d.style.display='block';d.innerHTML+=' | ERR:'+m+'@'+c;return false};
-    window.addEventListener('unhandledrejection',function(e){d.style.display='block';d.innerHTML+=' | REJ:'+e.reason});
-  }catch(e){}
 }
 function load(){try{txs=JSON.parse(localStorage.getItem(SK))||[]}catch(e){txs=[]}}
 function save(){localStorage.setItem(SK,JSON.stringify(txs))}
@@ -631,11 +622,8 @@ function procFile(file){
 }
 function procCSV(text,fn){if(text.charCodeAt(0)===0xFEFF)text=text.slice(1);const rows=text.split(/\r?\n/).filter(l=>l.trim()).map(l=>csvL(l));const res=parseRows(rows);if(res)showPV(res.records,res.platform,fn)}
 function procXL(buf,fn){
-  console.log('procXL: buf type=',typeof buf,'len=',buf.byteLength||buf.length);
   var bytes=new Uint8Array(typeof buf==='string'?(function(){var a=[];for(var i=0;i<buf.length;i++)a.push(buf.charCodeAt(i)&0xff);return new Uint8Array(a)}()):buf);
-  console.log('procXL: bytes=',bytes.length,'first4=',bytes[0],bytes[1],bytes[2],bytes[3]);
   if(bytes[0]!=0x50||bytes[1]!=0x4b){
-    console.log('procXL: not a ZIP file, falling back to SheetJS');
     if(typeof XLSX!=='undefined'){
       var wb=XLSX.read(buf,{type:typeof buf==='string'?'binary':'array',cellDates:true});
       var s=wb.Sheets[wb.SheetNames[0]];
@@ -664,32 +652,32 @@ function procXL(buf,fn){
     idx=nextIdx;
   }
   var need=[];for(var i=0;i<entries.length;i++){var n=entries[i].name;if(n=='xl/sharedStrings.xml'||n.match(/^xl\/worksheets\/sheet\d+\.xml$/))need.push(entries[i])}
-  console.log('procXL: entries=',entries.length,'need=',need.length,'names=',entries.map(function(e){return e.name}));
-  if(need.length==0){toast('未找到工作表 ('+entries.length+' entries)','er');return}
+  if(need.length==0){toast('未找到工作表','er');return}
   if(typeof DecompressionStream!=='undefined'){
-    console.log('procXL: using DecompressionStream');
     var pending=need.length;
     var results={};
     function decompEntry(e){
-      var raw=bytes.slice(e.start,e.start+e.size);
-      if(e.method==0){var s='';for(var i=0;i<raw.length;i++)s+=String.fromCharCode(raw[i]);results[e.name]=s;if(--pending==0)finishXL(results,fn);return}
-      var ds=new DecompressionStream('deflate-raw');
-      var w=ds.writable.getWriter();
-      w.write(raw);
-      w.close();
-      var reader=ds.readable.getReader();
-      var chunks=[];
-      function loop(){reader.read().then(function(r){
-        if(r.done){
-          var total=0;for(var i=0;i<chunks.length;i++)total+=chunks[i].length;
-          var out=new Uint8Array(total);var pos=0;
-          for(var i=0;i<chunks.length;i++){out.set(chunks[i],pos);pos+=chunks[i].length}
-          var s='';for(var i=0;i<out.length;i++)s+=String.fromCharCode(out[i]);
-          results[e.name]=s;
-          if(--pending==0)finishXL(results,fn);
-        }else{chunks.push(r.value);loop()}
-      })['catch'](function(){if(--pending==0)finishXL(results,fn)})}
-      loop();
+      try{
+        var raw=bytes.slice(e.start,e.start+e.size);
+        if(e.method==0){var s='';for(var i=0;i<raw.length;i++)s+=String.fromCharCode(raw[i]);results[e.name]=s;if(--pending==0)finishXL(results,fn);return}
+        var ds=new DecompressionStream('deflate-raw');
+        var w=ds.writable.getWriter();
+        w.write(raw);
+        w.close();
+        var reader=ds.readable.getReader();
+        var chunks=[];
+        function loop(){reader.read().then(function(r){
+          if(r.done){
+            var total=0;for(var i=0;i<chunks.length;i++)total+=chunks[i].length;
+            var out=new Uint8Array(total);var pos=0;
+            for(var i=0;i<chunks.length;i++){out.set(chunks[i],pos);pos+=chunks[i].length}
+            var s='';for(var i=0;i<out.length;i++)s+=String.fromCharCode(out[i]);
+            results[e.name]=s;
+            if(--pending==0)finishXL(results,fn);
+          }else{chunks.push(r.value);loop()}
+        })['catch'](function(){if(--pending==0)finishXL(results,fn)})}
+        loop();
+      }catch(err){if(--pending==0)finishXL(results,fn);toast('解压失败: '+err.message,'er')}
     }
     need.forEach(decompEntry);
   }else if(typeof XLSX!=='undefined'){
@@ -701,7 +689,6 @@ function procXL(buf,fn){
   }else{toast('解析库加载失败','er')}
 }
 function finishXL(files,fn){
-  console.log('finishXL: keys=',Object.keys(files));
   var ssXml=files['xl/sharedStrings.xml']||null,sheetXml=null;
   for(var k in files){if(k.match(/^xl\/worksheets\/sheet\d+\.xml$/))sheetXml=files[k]}
   if(!sheetXml){toast('未找到工作表','er');return}
@@ -735,7 +722,6 @@ function finishXL(files,fn){
     if(rowData.length>maxC)maxC=rowData.length;
   }
   var finalRows=[];for(var r=0;r<=maxR;r++)finalRows.push(rows2[r]||Array(maxC).fill(''));
-  console.log('finishXL: rows=',finalRows.length,'first3=',finalRows.slice(0,3));
   var res=parseRows(finalRows);if(res)showPV(res.records,res.platform,fn);
 }
 function parseRows(rows){
