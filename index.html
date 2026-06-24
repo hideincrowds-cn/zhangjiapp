@@ -655,21 +655,28 @@ function procXL(buf,fn){
   if(typeof DecompressionStream!=='undefined'){
     var pending=need.length;
     var results={};
-    need.forEach(function(e){
+    function decompEntry(e){
       var raw=bytes.slice(e.start,e.start+e.size);
-      if(e.method==0){var s='';for(var i=0;i<raw.length;i++)s+=String.fromCharCode(raw[i]);results[e.name]=s;if(--pending==0)finishXL(results,fn)}
-      else{
-        try{
-          var ds=new DecompressionStream('deflate-raw');
-          var w=ds.writable.getWriter();w.write(raw);w.close();
-          var reader=ds.readable.getReader();var chunks=[];
-          (function loop(){reader.read().then(function(r){
-            if(r.done){var total=0;for(var i=0;i<chunks.length;i++)total+=chunks[i].length;var out=new Uint8Array(total);var pos=0;for(var i=0;i<chunks.length;i++){out.set(chunks[i],pos);pos+=chunks[i].length}var s='';for(var i=0;i<out.length;i++)s+=String.fromCharCode(out[i]);results[e.name]=s;if(--pending==0)finishXL(results,fn)}
-            else{chunks.push(r.value);loop()}
-          })['catch'](function(){if(--pending==0)finishXL(results,fn)})}
-        }catch(ex){if(--pending==0)finishXL(results,fn)}
-      }
-    });
+      if(e.method==0){var s='';for(var i=0;i<raw.length;i++)s+=String.fromCharCode(raw[i]);results[e.name]=s;if(--pending==0)finishXL(results,fn);return}
+      var ds=new DecompressionStream('deflate-raw');
+      var w=ds.writable.getWriter();
+      w.write(raw);
+      w.close();
+      var reader=ds.readable.getReader();
+      var chunks=[];
+      function loop(){reader.read().then(function(r){
+        if(r.done){
+          var total=0;for(var i=0;i<chunks.length;i++)total+=chunks[i].length;
+          var out=new Uint8Array(total);var pos=0;
+          for(var i=0;i<chunks.length;i++){out.set(chunks[i],pos);pos+=chunks[i].length}
+          var s='';for(var i=0;i<out.length;i++)s+=String.fromCharCode(out[i]);
+          results[e.name]=s;
+          if(--pending==0)finishXL(results,fn);
+        }else{chunks.push(r.value);loop()}
+      })['catch'](function(){if(--pending==0)finishXL(results,fn)})}
+      loop();
+    }
+    need.forEach(decompEntry);
   }else if(typeof XLSX!=='undefined'){
     var wb=XLSX.read(buf,{type:typeof buf==='string'?'binary':'array',cellDates:true});
     var s=wb.Sheets[wb.SheetNames[0]];
