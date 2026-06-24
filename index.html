@@ -630,7 +630,7 @@ function procFile(file){
   else toast('不支持此格式','er')
 }
 function procCSV(text,fn){if(text.charCodeAt(0)===0xFEFF)text=text.slice(1);const rows=text.split(/\r?\n/).filter(l=>l.trim()).map(l=>csvL(l));const res=parseRows(rows);if(res)showPV(res.records,res.platform,fn)}
-function procXL(buf,fn){const wb=XLSX.read(buf,{type:'binary',cellDates:true});const s=wb.Sheets[wb.SheetNames[0]];const raw=XLSX.utils.sheet_to_json(s,{header:1,defval:''});const rows=raw.map(r=>r.map(c=>{if(c instanceof Date)return`${c.getFullYear()}-${String(c.getMonth()+1).padStart(2,'0')}-${String(c.getDate()).padStart(2,'0')} ${String(c.getHours()).padStart(2,'0')}:${String(c.getMinutes()).padStart(2,'0')}:${String(c.getSeconds()).padStart(2,'0')}`;return String(c??'')}));const res=parseRows(rows);if(res)showPV(res.records,res.platform,fn)}
+function procXL(buf,fn){const wb=XLSX.read(buf,{type:'binary',cellDates:true,codepage:65001});const s=wb.Sheets[wb.SheetNames[0]];const raw=XLSX.utils.sheet_to_json(s,{header:1,defval:''});const rows=raw.map(r=>r.map(c=>{if(c instanceof Date)return`${c.getFullYear()}-${String(c.getMonth()+1).padStart(2,'0')}-${String(c.getDate()).padStart(2,'0')} ${String(c.getHours()).padStart(2,'0')}:${String(c.getMinutes()).padStart(2,'0')}:${String(c.getSeconds()).padStart(2,'0')}`;return String(c??'')}));const res=parseRows(rows);if(res)showPV(res.records,res.platform,fn)}
 function parseRows(rows){
   if(!rows||rows.length<2){toast('文件内容不足','er');return null}
   for(let i=0;i<Math.min(rows.length,30);i++){const row=rows[i];if(!row||row.length<3)continue;const fm=bldFM(row);if(fm.date>=0&&(fm.amount>=0||(fm.amountDebit>=0&&fm.amountCredit>=0))){const plat=gp(rows,i);const recs=extR(rows,i+1,fm,plat);if(recs.length)return{platform:plat,records:recs}}}
