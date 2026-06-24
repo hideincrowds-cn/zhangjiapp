@@ -620,7 +620,10 @@ function procXL(buf,fn){
       var s=wb.Sheets[wb.SheetNames[0]];
       var raw=XLSX.utils.sheet_to_json(s,{header:1,defval:''});
       var rows2=raw.map(function(r){return r.map(function(c){return String(c==null?'':c)})});
-      var res=parseRows(rows2);if(res)showPV(res.records,res.platform,fn);
+      _initGBK().then(function(){
+        for(var i=0;i<rows2.length;i++){var row=rows2[i];for(var j=0;j<row.length;j++){if(typeof row[j]==='string'){var hasHi=false;for(var k=0;k<row[j].length;k++){if(row[j].charCodeAt(k)>127){hasHi=true;break}}if(hasHi){var b=[];for(var k=0;k<row[j].length;k++)b.push(row[j].charCodeAt(k)&0xff);var ds='';for(var k=0;k<b.length;k++){if(b[k]<128){ds+=String.fromCharCode(b[k])}else if(k+1<b.length){ds+=GBK[b[k]*256+b[k+1]]||'?';k++}else{ds+=String.fromCharCode(b[k])}}row[j]=ds}}}}
+        var res=parseRows(rows2);if(res)showPV(res.records,res.platform,fn);
+      }).catch(function(){var res=parseRows(rows2);if(res)showPV(res.records,res.platform,fn)});
     }else{toast('解析库加载失败','er')}
     return;
   }
