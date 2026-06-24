@@ -631,7 +631,9 @@ function procFile(file){
 }
 function procCSV(text,fn){if(text.charCodeAt(0)===0xFEFF)text=text.slice(1);const rows=text.split(/\r?\n/).filter(l=>l.trim()).map(l=>csvL(l));const res=parseRows(rows);if(res)showPV(res.records,res.platform,fn)}
 function procXL(buf,fn){
+  console.log('procXL: buf type=',typeof buf,'len=',buf.byteLength||buf.length);
   var bytes=new Uint8Array(typeof buf==='string'?(function(){var a=[];for(var i=0;i<buf.length;i++)a.push(buf.charCodeAt(i)&0xff);return new Uint8Array(a)}()):buf);
+  console.log('procXL: bytes=',bytes.length,'first4=',bytes[0],bytes[1],bytes[2],bytes[3]);
   var entries=[],idx=0;
   while(idx+30<bytes.length){
     if(bytes[idx]!=0x50||bytes[idx+1]!=0x4b||bytes[idx+2]!=0x03||bytes[idx+3]!=0x04)break;
@@ -651,8 +653,10 @@ function procXL(buf,fn){
     idx=nextIdx;
   }
   var need=[];for(var i=0;i<entries.length;i++){var n=entries[i].name;if(n=='xl/sharedStrings.xml'||n.match(/^xl\/worksheets\/sheet\d+\.xml$/))need.push(entries[i])}
-  if(need.length==0){toast('未找到工作表','er');return}
+  console.log('procXL: entries=',entries.length,'need=',need.length,'names=',entries.map(function(e){return e.name}));
+  if(need.length==0){toast('未找到工作表 ('+entries.length+' entries)','er');return}
   if(typeof DecompressionStream!=='undefined'){
+    console.log('procXL: using DecompressionStream');
     var pending=need.length;
     var results={};
     function decompEntry(e){
@@ -686,6 +690,7 @@ function procXL(buf,fn){
   }else{toast('解析库加载失败','er')}
 }
 function finishXL(files,fn){
+  console.log('finishXL: keys=',Object.keys(files));
   var ssXml=files['xl/sharedStrings.xml']||null,sheetXml=null;
   for(var k in files){if(k.match(/^xl\/worksheets\/sheet\d+\.xml$/))sheetXml=files[k]}
   if(!sheetXml){toast('未找到工作表','er');return}
@@ -719,6 +724,7 @@ function finishXL(files,fn){
     if(rowData.length>maxC)maxC=rowData.length;
   }
   var finalRows=[];for(var r=0;r<=maxR;r++)finalRows.push(rows2[r]||Array(maxC).fill(''));
+  console.log('finishXL: rows=',finalRows.length,'first3=',finalRows.slice(0,3));
   var res=parseRows(finalRows);if(res)showPV(res.records,res.platform,fn);
 }
 function parseRows(rows){
