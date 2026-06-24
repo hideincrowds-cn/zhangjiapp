@@ -263,7 +263,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(.7);cursor:p
   <!-- ═══ Import ═══ -->
   <div class="page" id="pg-imp">
     <h1 class="page-title">导入</h1><p class="page-desc">支持微信/支付宝 CSV、银行 Excel，自动识别转账</p>
-    <div class="imp-zone" id="impZone" onclick="try{document.getElementById('impF').click()}catch(e){document.title='ERR:'+e.message}">
+    <div class="imp-zone" id="impZone" onclick="alert('clicked');try{document.getElementById('impF').click()}catch(e){document.title='ERR:'+e.message}">
       <input type="file" id="impF" accept=".csv,.xls,.xlsx" multiple onchange="handleFile(event)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       <h3>选择或拖放文件</h3><p>CSV / XLS / XLSX</p>
