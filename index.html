@@ -216,8 +216,6 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(.7);cursor:p
     </div>
     <div class="transfer-note" id="sT"></div>
     <div class="card"><div class="card-title">支出构成</div><div class="chart-box"><canvas id="chCa"></canvas></div></div>
-    <div class="card"><div class="card-title">每日支出热力图 <span style="font-size:.75rem;color:var(--t3);font-family:var(--fm)">近30天</span></div><div id="heatmapContainer" style="display:flex;flex-wrap:wrap;gap:4px;padding-top:8px"></div></div>
-    <div class="card"><div class="card-title">收支趋势<span class="chip-group" id="dashPeriod"><span class="chip active" data-v="day" onclick="setChip(this,'dperiod')">日</span><span class="chip" data-v="week" onclick="setChip(this,'dperiod')">周</span><span class="chip" data-v="month" onclick="setChip(this,'dperiod')">月</span><span class="chip" data-v="year" onclick="setChip(this,'dperiod')">年</span></span></div><div class="chart-box"><canvas id="dashTrend"></canvas></div></div>
     <div class="card"><div class="card-title">最近交易</div><div id="dashR"></div></div>
   </div>
 
@@ -378,42 +376,7 @@ function renderDash(){
   document.getElementById('sT').textContent=mtr.length?`转账 ${mtr.length} 笔 ¥${mtr.reduce((s,t)=>s+t.amount,0).toFixed(2)}（不计入收支）`:'';
   const recent=[...txs].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,5);
   document.getElementById('dashR').innerHTML=recent.length?recent.map(t=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)"><div style="width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.95rem;background:${cc(t.category,t.type)}15">${ce(t.category)}</div><div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;gap:6px"><span style="font-weight:600;font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.counterparty||t.category||'-'}</span><span style="font-family:var(--fm);font-weight:600;font-size:.85rem;color:${t.type==='income'?'var(--inc)':t.type==='expense'?'var(--exp)':'var(--trf)'};flex-shrink:0">${t.type==='income'?'+':t.type==='expense'?'-':''}¥${t.amount.toFixed(2)}</span></div><div style="font-size:.7rem;color:var(--t3);margin-top:1px">${fs(t.date)}</div></div></div>`).join(''):'<div class="empty"><h3>暂无记录</h3><p>点击 + 开始记账</p></div>';
-  renderDashCharts();renderHeatmap();renderDashTrend()
-}
-function renderHeatmap(){
-  const c=document.getElementById('heatmapContainer');if(!c)return;const now=new Date();let h='';
-  const expOnly=txs.filter(t=>t.type==='expense');
-  for(let i=29;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i);const ds=d.toISOString().slice(0,10);const de=expOnly.filter(t=>t.date.startsWith(ds)).reduce((s,t)=>s+t.amount,0);const it=Math.min(de/500,1);const bg=it===0?'var(--s3)':`rgba(232,185,49,${(.15+it*.7).toFixed(2)})`;h+=`<div title="${ds}\n¥${de.toFixed(2)}" style="width:calc((100% - 116px)/30);min-width:28px;aspect-ratio:1;background:${bg};border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:600;color:${it>.4?'#000':'var(--t3)'};cursor:default;transition:transform .15s" onmouseenter="this.style.transform='scale(1.2)'" onmouseleave="this.style.transform='scale(1)'">${d.getDate()}</div>`}
-  c.innerHTML=h
-}
-function renderDashTrend(){
-  dk('dt');const now=new Date();
-  const period=document.querySelector('#dashPeriod .chip.active')?.dataset.v||'day';
-  const el=document.getElementById('dashTrend');if(!el)return;
-  el.parentElement.style.height='200px';
-  let labels=[],incData=[],expData=[];
-  if(period==='day'){
-    for(let i=29;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i);labels.push(d.toISOString().slice(0,10))}
-    incData=labels.map(ds=>txs.filter(t=>t.type==='income'&&t.date.startsWith(ds)).reduce((s,t)=>s+t.amount,0));
-    expData=labels.map(ds=>txs.filter(t=>t.type==='expense'&&t.date.startsWith(ds)).reduce((s,t)=>s+t.amount,0));
-    labels=labels.map(d=>d.slice(5).replace('-','/'));
-  }else if(period==='week'){
-    for(let i=11;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-d.getDay()-(i*7));const end=new Date(d);end.setDate(end.getDate()+6);labels.push({s:d.toISOString().slice(0,10),e:end.toISOString().slice(0,10),l:(d.getMonth()+1)+'/'+d.getDate()})}
-    incData=labels.map(r=>txs.filter(t=>t.type==='income'&&t.date>=r.s&&t.date<=r.e).reduce((s,t)=>s+t.amount,0));
-    expData=labels.map(r=>txs.filter(t=>t.type==='expense'&&t.date>=r.s&&t.date<=r.e).reduce((s,t)=>s+t.amount,0));
-    labels=labels.map(r=>r.l);
-  }else if(period==='year'){
-    for(let i=4;i>=0;i--){const y=now.getFullYear()-i;labels.push({y:y,l:String(y)})}
-    incData=labels.map(r=>txs.filter(t=>t.type==='income'&&new Date(t.date).getFullYear()===r.y).reduce((s,t)=>s+t.amount,0));
-    expData=labels.map(r=>txs.filter(t=>t.type==='expense'&&new Date(t.date).getFullYear()===r.y).reduce((s,t)=>s+t.amount,0));
-    labels=labels.map(r=>r.l);
-  }else{
-    for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);labels.push({y:d.getFullYear(),m:d.getMonth(),l:(d.getMonth()+1)+'月'})}
-    incData=labels.map(r=>txs.filter(t=>{const d=new Date(t.date);return t.type==='income'&&d.getMonth()===r.m&&d.getFullYear()===r.y}).reduce((s,t)=>s+t.amount,0));
-    expData=labels.map(r=>txs.filter(t=>{const d=new Date(t.date);return t.type==='expense'&&d.getMonth()===r.m&&d.getFullYear()===r.y}).reduce((s,t)=>s+t.amount,0));
-    labels=labels.map(r=>r.l);
-  }
-  chI.dt=new Chart(el,{type:'line',data:{labels,datasets:[{label:'收入',data:incData,borderColor:'#34d399',backgroundColor:'rgba(52,211,153,.1)',fill:true,tension:.3,pointRadius:2,borderWidth:2},{label:'支出',data:expData,borderColor:'#f87171',backgroundColor:'rgba(248,113,113,.1)',fill:true,tension:.3,pointRadius:2,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#a0a0a8',usePointStyle:true,boxWidth:8,font:{size:9}}}},scales:{x:{ticks:{color:'#5c5c66',font:{size:8},maxRotation:0,autoSkip:true,maxTicksLimit:10},grid:{display:false}},y:{ticks:{color:'#5c5c66',font:{size:8},callback:v=>'¥'+v},grid:{color:'rgba(42,42,52,.5)'}}}}})
+  renderDashCharts()
 }
 function dk(k){if(chI[k]){chI[k].destroy();delete chI[k]}}
 var _dashRetry=0;
@@ -520,7 +483,7 @@ function renderTxCharts(f){
 }
 
 function swTxView(v){if(batchOn)exitBatch();txView=v;document.getElementById('txLV').style.display=v==='list'?'block':'none';document.getElementById('txCV').style.display=v==='chart'?'block':'none';document.querySelectorAll('.vt-btn').forEach(b=>b.classList.toggle('active',b.dataset.v===v));requestAnimationFrame(()=>pgTx())}
-function setChip(el,type){const pid=type==='type'?'txTC':type==='plat'?'txPC':type==='period'?'txPeriod':type==='dperiod'?'dashPeriod':'txCatFilter';document.querySelectorAll(`#${pid} .chip`).forEach(c=>c.classList.remove('active'));el.classList.add('active');if(type==='dperiod'){renderDashTrend();return}pgN=1;pgTx()}
+function setChip(el,type){const pid=type==='type'?'txTC':type==='plat'?'txPC':type==='period'?'txPeriod':'txCatFilter';document.querySelectorAll(`#${pid} .chip`).forEach(c=>c.classList.remove('active'));el.classList.add('active');pgN=1;pgTx()}
 function loadMore(){pgN++;pgTx()}
 
 // ═══ Batch Operations ═══
