@@ -204,8 +204,6 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(.7);cursor:p
 </style>
 </head>
 <body>
-<div id="dbgTop" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#ff0;color:#000;font:12px monospace;padding:6px;text-align:center">JS调试:等待加载...</div>
-<script>document.getElementById('dbgTop').innerHTML='JS调试:脚本已执行';window.onerror=function(m,s,l,c){document.getElementById('dbgTop').style.background='#f00';document.getElementById('dbgTop').innerHTML='JS错误:'+m+' 行'+l+':'+c;return false};window.addEventListener('unhandledrejection',function(e){document.getElementById('dbgTop').style.background='#f00';document.getElementById('dbgTop').innerHTML+=' REJECT:'+e.reason})</script>
 <div class="app">
   <!-- ═══ Dashboard ═══ -->
   <div class="page active" id="pg-dash">
