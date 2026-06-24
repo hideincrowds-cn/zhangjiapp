@@ -263,7 +263,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(.7);cursor:p
   <!-- ═══ Import ═══ -->
   <div class="page" id="pg-imp">
     <h1 class="page-title">导入</h1><p class="page-desc">支持微信/支付宝 CSV、银行 Excel，自动识别转账</p>
-    <div class="imp-zone" id="impZone" onclick="document.getElementById('impF').click()">
+    <div class="imp-zone" id="impZone" onclick="try{document.getElementById('impF').click()}catch(e){document.title='ERR:'+e.message}">
       <input type="file" id="impF" accept=".csv,.xls,.xlsx" multiple onchange="handleFile(event)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       <h3>选择或拖放文件</h3><p>CSV / XLS / XLSX</p>
@@ -612,16 +612,18 @@ function detDir(s){if(!s)return null;s=String(s).trim();if(EKW.some(k=>s.include
 function pAmt(s){if(typeof s==='number')return s;if(!s)return 0;return parseFloat(String(s).replace(/[¥￥,\s元()（）]/g,'').trim())||0}
 
 function setupDrag(){const z=document.getElementById('impZone');if(!z)return;['dragenter','dragover'].forEach(e=>z.addEventListener(e,ev=>{ev.preventDefault();z.classList.add('over')}));['dragleave','drop'].forEach(e=>z.addEventListener(e,ev=>{ev.preventDefault();z.classList.remove('over')}));z.addEventListener('drop',e=>{const files=[...e.dataTransfer.files];let chain=Promise.resolve();files.forEach(f=>{chain=chain.then(()=>procFile(f))})})}
-function handleFile(e){const files=[...e.target.files];if(!files.length)return;let chain=Promise.resolve();files.forEach(f=>{chain=chain.then(()=>procFile(f))});e.target.value=''}
+function handleFile(e){const files=[...e.target.files];if(!files.length)return;toast('读取 '+files.length+' 个文件','ok');let chain=Promise.resolve();files.forEach(f=>{chain=chain.then(()=>procFile(f))});e.target.value=''}
 function isUTF8(buf){const b=new Uint8Array(buf);let i=0;while(i<b.length){if(b[i]<0x80){i++}else if(b[i]<0xC0){return false}else if(b[i]<0xE0){if(i+1>=b.length||b[i+1]<0x80||b[i+1]>=0xC0)return false;i+=2}else if(b[i]<0xF0){if(i+2>=b.length||b[i+1]<0x80||b[i+1]>=0xC0||b[i+2]<0x80||b[i+2]>=0xC0)return false;i+=3}else if(b[i]<0xF8){if(i+3>=b.length||b[i+1]<0x80||b[i+1]>=0xC0||b[i+2]<0x80||b[i+2]>=0xC0||b[i+3]<0x80||b[i+3]>=0xC0)return false;i+=4}else{return false}}return true}
 function procFile(file){
   const ext=file.name.split('.').pop().toLowerCase();
+  toast('处理: '+file.name,'ok');
   if(ext==='csv'){const r=new FileReader();r.onload=function(e){let t=e.target.result;if(/[^\x00-\x7F]/.test(t.slice(0,500))){const r2=new FileReader();r2.onload=function(e2){if(isUTF8(e2.target.result)){procCSV(t,file.name)}else{decodeGBK(e2.target.result).then(text=>procCSV(text,file.name)).catch(err=>{console.warn('GBK error:',err);procCSV(t,file.name)})}};r2.readAsArrayBuffer(file);return}procCSV(t,file.name)};r.readAsText(file,'UTF-8')}
-  else if(ext==='xls'||ext==='xlsx'){if(typeof XLSX==='undefined'&&typeof DecompressionStream==='undefined'){toast('解析库加载失败','er');return};const r=new FileReader();r.onload=function(e){try{procXL(e.target.result,file.name)}catch(err){toast('解析失败:'+err.message,'er')}};r.readAsArrayBuffer(file)}
+  else if(ext==='xls'||ext==='xlsx'){if(typeof XLSX==='undefined'&&typeof DecompressionStream==='undefined'){toast('解析库加载失败','er');return};const r=new FileReader();r.onload=function(e){try{procXL(e.target.result,file.name)}catch(err){toast('解析失败:'+err.message,'er')}};r.onerror=function(){toast('读取文件失败','er')};r.readAsArrayBuffer(file)}
   else toast('不支持此格式','er')
 }
 function procCSV(text,fn){if(text.charCodeAt(0)===0xFEFF)text=text.slice(1);const rows=text.split(/\r?\n/).filter(l=>l.trim()).map(l=>csvL(l));const res=parseRows(rows);if(res)showPV(res.records,res.platform,fn)}
 function procXL(buf,fn){
+  toast('解析Excel...','ok');
   var bytes=new Uint8Array(typeof buf==='string'?(function(){var a=[];for(var i=0;i<buf.length;i++)a.push(buf.charCodeAt(i)&0xff);return new Uint8Array(a)}()):buf);
   if(bytes[0]!=0x50||bytes[1]!=0x4b){
     if(typeof XLSX!=='undefined'){
@@ -677,7 +679,7 @@ function procXL(buf,fn){
           }else{chunks.push(r.value);loop()}
         })['catch'](function(){if(--pending==0)finishXL(results,fn)})}
         loop();
-      }catch(err){if(--pending==0)finishXL(results,fn);toast('解压失败: '+err.message,'er')}
+      }catch(err){try{--pending}catch(e){}if(pending<=0){pending=0;finishXL(results,fn)}try{toast('解压失败: '+err.message,'er')}catch(e){}}
     }
     need.forEach(decompEntry);
   }else if(typeof XLSX!=='undefined'){
@@ -689,6 +691,7 @@ function procXL(buf,fn){
   }else{toast('解析库加载失败','er')}
 }
 function finishXL(files,fn){
+  toast('解析工作表...','ok');
   var ssXml=files['xl/sharedStrings.xml']||null,sheetXml=null;
   for(var k in files){if(k.match(/^xl\/worksheets\/sheet\d+\.xml$/))sheetXml=files[k]}
   if(!sheetXml){toast('未找到工作表','er');return}
